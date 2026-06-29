@@ -1,5 +1,5 @@
 //
-//  SIgnInWithGoogleHelper.swift
+//  SignInWithGoogleHelper.swift
 //  FirebaseBootcamp
 //
 //  Created by Sagar Jangra on 26/06/2026.
@@ -9,7 +9,6 @@ import Foundation
 import GoogleSignIn
 import GoogleSignInSwift
 
-
 struct GoogleSignInResultModel {
     let idToken: String
     let accessToken: String
@@ -17,7 +16,7 @@ struct GoogleSignInResultModel {
     let email: String?
 }
 
-final class SignInWithGoogleHelper {
+struct SignInWithGoogleHelper {
     
     @MainActor
     func signIn() async throws -> GoogleSignInResultModel {
@@ -35,12 +34,11 @@ final class SignInWithGoogleHelper {
         let name = gidSignInResult.user.profile?.name
         let email = gidSignInResult.user.profile?.email
         
-        
-        let tokens = GoogleSignInResultModel(idToken: idToken, accessToken: accessToken, name: name, email: email)
-        
-        
-        return tokens
+        return GoogleSignInResultModel(
+            idToken: idToken,
+            accessToken: accessToken,
+            name: name,
+            email: email
+        )
     }
 }
-
-

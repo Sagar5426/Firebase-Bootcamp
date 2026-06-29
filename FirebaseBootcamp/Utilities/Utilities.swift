@@ -8,15 +8,25 @@
 import Foundation
 import UIKit
 
-
 final class Utilities {
     
     static let shared = Utilities()
     private init() {}
     
+    // NEW: Safely retrieves the active window across connected scenes
+    @MainActor
+    var topWindow: UIWindow? {
+        UIApplication.shared.connectedScenes
+            .filter { $0.activationState == .foregroundActive }
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap { $0.windows }
+            .first { $0.isKeyWindow }
+    }
+    
     @MainActor
     func topViewController(controller: UIViewController? = nil) -> UIViewController? {
-        let controller = controller ?? UIApplication.shared.keyWindow?.rootViewController
+        // FIXED: Using our new topWindow property instead of the deprecated keyWindow
+        let controller = controller ?? topWindow?.rootViewController
         
         if let navigationController = controller as? UINavigationController {
             return topViewController(controller: navigationController.visibleViewController)
@@ -34,6 +44,4 @@ final class Utilities {
         
         return controller
     }
-    
 }
-

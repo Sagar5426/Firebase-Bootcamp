@@ -11,7 +11,6 @@ import GoogleSignIn
 import GoogleSignInSwift
 import FirebaseAuth
 import AuthenticationServices
-import CryptoKit
 
 struct SignInWithAppleButtonViewRepresentable: UIViewRepresentable {
     
@@ -22,16 +21,14 @@ struct SignInWithAppleButtonViewRepresentable: UIViewRepresentable {
         ASAuthorizationAppleIDButton(type: type, style: style)
     }
     
-    func updateUIView(_ uiView: ASAuthorizationAppleIDButton, context: Context) {
-        
-    }
+    func updateUIView(_ uiView: ASAuthorizationAppleIDButton, context: Context) {}
 }
 
 
+
 @MainActor
-final class AuthenticationViewModel: NSObject, ObservableObject {
+final class AuthenticationViewModel: ObservableObject {
     
-    private var currentNonce: String?
     @Published var didSignedInWithApple: Bool = false
     
     func signInGoogle() async throws {
@@ -40,98 +37,14 @@ final class AuthenticationViewModel: NSObject, ObservableObject {
         try await AuthenticationManager.shared.signInWithGoogle(tokens: tokens)
     }
     
-    func signInApple() async throws{
+    func signInApple() async throws {
+        // CLEANED UP: Instantiating our isolated Apple Helper
+        let helper = SignInWithAppleHelper()
+        let tokens = try await helper.signIn()
+        try await AuthenticationManager.shared.signInWithApple(tokens: tokens)
         
-    }
-    
-    
-    private func randomNonceString(length: Int = 32) -> String {
-      precondition(length > 0)
-      var randomBytes = [UInt8](repeating: 0, count: length)
-      let errorCode = SecRandomCopyBytes(kSecRandomDefault, randomBytes.count, &randomBytes)
-      if errorCode != errSecSuccess {
-        fatalError(
-          "Unable to generate nonce. SecRandomCopyBytes failed with OSStatus \(errorCode)"
-        )
-      }
-
-      let charset: [Character] =
-        Array("0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._")
-
-      let nonce = randomBytes.map { byte in
-        // Pick a random character from the set, wrapping around if needed.
-        charset[Int(byte) % charset.count]
-      }
-
-      return String(nonce)
-    }
-    
-    private func sha256(_ input: String) -> String {
-      let inputData = Data(input.utf8)
-      let hashedData = SHA256.hash(data: inputData)
-      let hashString = hashedData.compactMap {
-        String(format: "%02x", $0)
-      }.joined()
-
-      return hashString
-    }
-
-    func startSignInWithAppleFlow() {
-      let nonce = randomNonceString()
-      currentNonce = nonce
-      let appleIDProvider = ASAuthorizationAppleIDProvider()
-      let request = appleIDProvider.createRequest()
-      request.requestedScopes = [.fullName, .email]
-      request.nonce = sha256(nonce)
-
-      let authorizationController = ASAuthorizationController(authorizationRequests: [request])
-      authorizationController.delegate = self
-      authorizationController.presentationContextProvider = self
-      authorizationController.performRequests()
-    }
-        
-}
-
-struct SignInWithAppleResult {
-    let token: String
-    let nonce: String
-}
-
-extension AuthenticationViewModel: ASAuthorizationControllerDelegate {
-    
-    func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization) {
-        
-        guard
-            let appleIDCredential = authorization.credential as? ASAuthorizationAppleIDCredential,
-            let appleIDToken = appleIDCredential.identityToken,
-            let idTokenString = String(data: appleIDToken, encoding: .utf8),
-            let nonce = currentNonce else {
-            print("Error")
-            return
-        }
-        
-        let tokens = SignInWithAppleResult(token: idTokenString, nonce: nonce)
-        
-        Task {
-            do {
-                try await AuthenticationManager.shared.signInWithApple(tokens: tokens)
-                didSignedInWithApple = true
-            } catch {
-                print(error)
-            }
-        }
-    }
-
-  func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
-    // Handle error.
-    print("Sign in with Apple errored: \(error)")
-  }
-
-}
-
-extension AuthenticationViewModel: ASAuthorizationControllerPresentationContextProviding {
-    func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
-        return Utilities.shared.topViewController()?.view.window
+        // Triggers UI Dismissal
+        self.didSignedInWithApple = true
     }
 }
 
@@ -140,53 +53,91 @@ struct AuthenticationView: View {
     @Binding var showSignInView: Bool
     
     var body: some View {
-        VStack {
-            NavigationLink {
-                SignInEmailView(showSignInView: $showSignInView)
-            } label: {
-                Text("Sign in with Email")
-                    .font(.headline)
-                    .foregroundStyle(.white)
-                    .frame(height: 55)
-                    .frame(maxWidth: .infinity)
-                    .background(Color.blue)
-                    .cornerRadius(12)
-            }
-            GoogleSignInButton(viewModel: GoogleSignInButtonViewModel(scheme: .dark, style: .wide, state: .normal)) {
-                Task {
-                    do {
-                        try await vm.signInGoogle()
-                        showSignInView = false
-                    } catch {
-                        print("Error: \(error)")
-                    }
-                }
-            }
+        ZStack {
+            // 1. Subtle Background Gradient
+            LinearGradient(
+                colors: [Color.blue.opacity(0.15), Color.purple.opacity(0.15)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
             
-            Button {
-                Task {
-                    do {
-                        try await vm.signInApple()
-                    } catch {
-                        print("Error: \(error)")
-                    }
+            VStack {
+                // 2. Welcoming Header Section
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Welcome")
+                        .font(.largeTitle)
+                        .fontWeight(.bold)
+                    
+                    Text("Sign in to access your planner and sync your data across devices.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
                 }
-            } label: {
-                SignInWithAppleButtonViewRepresentable(type: .default, style: .white)
-                    .allowsHitTesting(false)
-            }
-            .frame(height: 55)
-            .onChange(of: vm.didSignedInWithApple) { oldValue, newValue in
-                if newValue == true {
-                    showSignInView = false
-                }
-            }
-            
-            Spacer()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 24)
+                .padding(.top, 40)
                 
+                Spacer()
+                
+                // 3. Button Container with Native Glass Effect
+                VStack(spacing: 16) {
+                    NavigationLink {
+                        SignInEmailView(showSignInView: $showSignInView)
+                    } label: {
+                        HStack {
+                            Image(systemName: "envelope.fill")
+                            Text("Continue with Email")
+                                .font(.headline)
+                        }
+                        .foregroundStyle(.white)
+                        .frame(height: 55)
+                        .frame(maxWidth: .infinity)
+                        .background(Color.blue)
+                        .cornerRadius(12)
+                    }
+                    
+                    GoogleSignInButton(viewModel: GoogleSignInButtonViewModel(scheme: .dark, style: .wide, state: .normal)) {
+                        Task {
+                            do {
+                                try await vm.signInGoogle()
+                                showSignInView = false
+                            } catch {
+                                print("Error: \(error)")
+                            }
+                        }
+                    }
+                    
+                    Button {
+                        Task {
+                            do {
+                                try await vm.signInApple()
+                            } catch {
+                                print("Error: \(error)")
+                            }
+                        }
+                    } label: {
+                        SignInWithAppleButtonViewRepresentable(type: .continue, style: .white)
+                            .allowsHitTesting(false)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 55)
+                    }
+                    .frame(height: 55)
+                    .onChange(of: vm.didSignedInWithApple) { oldValue, newValue in
+                        if newValue == true {
+                            showSignInView = false
+                        }
+                    }
+                }
+                .padding(24)
+                .background(.regularMaterial) // Native Apple glass effect
+                .cornerRadius(24)
+                .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 5)
+                .padding(.horizontal, 16)
+                .padding(.bottom, 40)
+            }
         }
-        .padding()
-        .navigationTitle("Sign In")
+        // Hide the default nav bar so our custom title layout takes over smoothly
+        .navigationBarHidden(true)
     }
 }
 

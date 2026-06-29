@@ -55,15 +55,13 @@ final class AuthenticationManager {
         return providers
     }
     
-    
-    func signOut() throws{
+    func signOut() throws {
         try Auth.auth().signOut()
     }
 }
 
 // MARK: Sign in Email
 extension AuthenticationManager {
-    // @discardableResult: used to ignore compiler warning when we dont want to save the result every time
     @discardableResult
     func createUser(email: String, password: String) async throws -> AuthDataResultModel {
         let authDataResult = try await Auth.auth().createUser(withEmail: email, password: password)
@@ -76,25 +74,23 @@ extension AuthenticationManager {
         return AuthDataResultModel(user: authDataResult.user)
     }
     
-    func resetPassword(email:String) async throws {
+    func resetPassword(email: String) async throws {
         try await Auth.auth().sendPasswordReset(withEmail: email)
     }
     
-    func updatePassword(password:String) async throws {
+    func updatePassword(password: String) async throws {
         guard let user = Auth.auth().currentUser else {
             throw URLError(.badServerResponse)
         }
         try await user.updatePassword(to: password)
     }
     
-    func updateEmail(email:String) async throws {
+    func updateEmail(email: String) async throws {
         guard let user = Auth.auth().currentUser else {
             throw URLError(.badServerResponse)
         }
-        // FIXED: Using the new required Firebase method
         try await user.sendEmailVerification(beforeUpdatingEmail: email)
     }
-    
 }
 
 // MARK: Sign in SSO
@@ -108,7 +104,12 @@ extension AuthenticationManager {
     
     @discardableResult
     func signInWithApple(tokens: SignInWithAppleResult) async throws -> AuthDataResultModel {
-        let credential = OAuthProvider.credential(withProviderID: AuthProviderOption.apple.rawValue, idToken: tokens.token, rawNonce: tokens.nonce)
+        // FIXED: Using Apple-specific factory credential API mapping
+        let credential = OAuthProvider.appleCredential(
+            withIDToken: tokens.token,
+            rawNonce: tokens.nonce,
+            fullName: nil
+        )
         return try await signIn(credential: credential)
     }
     

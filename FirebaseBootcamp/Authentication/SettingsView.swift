@@ -12,12 +12,25 @@ import Combine
 final class SettingsViewModel: ObservableObject {
     
     @Published var authProviders: [AuthProviderOption] = []
-    
-    func loadAuthProviders() {
-        if let providers = try? AuthenticationManager.shared.getProvider() {
-            authProviders = providers
+    @Published var linkedProviders: [String] = []
+        
+        func loadAuthProviders() {
+            self.linkedProviders = AuthenticationManager.shared.getLinkedProviders()
         }
-    }
+        
+        func linkGoogleAccount() async throws {
+            let helper = SignInWithGoogleHelper()
+            let tokens = try await helper.signIn()
+            try await AuthenticationManager.shared.linkGoogle(tokens: tokens)
+            self.loadAuthProviders() // Refresh UI after successful link
+        }
+        
+        func linkAppleAccount() async throws {
+            let helper = SignInWithAppleHelper()
+            let tokens = try await helper.signIn()
+            try await AuthenticationManager.shared.linkApple(tokens: tokens)
+            self.loadAuthProviders() // Refresh UI after successful link
+        }
     
     func signOut() throws {
         try AuthenticationManager.shared.signOut()
@@ -46,27 +59,80 @@ final class SettingsViewModel: ObservableObject {
 struct SettingsView: View {
     @StateObject private var vm = SettingsViewModel()
     @Binding var showSignInView: Bool
+    
+    @State private var showLinkEmailSheet: Bool = false
+    
     var body: some View {
         List {
-            Button("Log out") {
-                Task {
-                    do {
-                        try vm.signOut()
-                        showSignInView = true
-                    } catch {
-                        print("Error: \(error)")
+            Section("Linked Accounts") {
+                
+                // 1. Email Provider Check
+                if vm.linkedProviders.contains("password") {
+                    Text("Email: Connected")
+                        .foregroundStyle(.gray)
+                } else {
+                    Button("Link Email Account") {
+                        showLinkEmailSheet = true
+                    }
+                }
+                
+                // 2. Google Provider Check
+                if vm.linkedProviders.contains("google.com") {
+                    Text("Google: Connected")
+                        .foregroundStyle(.gray)
+                } else {
+                    Button("Link Google Account") {
+                        Task {
+                            do {
+                                try await vm.linkGoogleAccount()
+                            } catch {
+                                print("Failed to link Google: \(error)")
+                            }
+                        }
+                    }
+                }
+                
+                // 3. Apple Provider Check
+                if vm.linkedProviders.contains("apple.com") {
+                    Text("Apple: Connected")
+                        .foregroundStyle(.gray)
+                } else {
+                    Button("Link Apple Account") {
+                        Task {
+                            do {
+                                try await vm.linkAppleAccount()
+                            } catch {
+                                print("Failed to link Apple: \(error)")
+                            }
+                        }
                     }
                 }
             }
-            if vm.authProviders.contains(.email) {
-                emailSection
-            }
             
+            Section {
+                Button("Log out") {
+                    Task {
+                        do {
+                            try vm.signOut()
+                            showSignInView = true
+                        } catch {
+                            print("Error signing out: \(error)")
+                        }
+                    }
+                }
+                .foregroundStyle(.red)
+            }
         }
+        .navigationTitle("Settings")
         .onAppear {
             vm.loadAuthProviders()
         }
-        .navigationTitle("SettingsView")
+        .sheet(isPresented: $showLinkEmailSheet) {
+            LinkEmailView(isPresented: $showLinkEmailSheet) {
+                // Refresh the list once the email is successfully linked
+                vm.loadAuthProviders()
+            }
+        }
     }
 }
 

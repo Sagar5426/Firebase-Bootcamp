@@ -31,112 +31,173 @@ final class AuthenticationViewModel: ObservableObject {
     
     @Published var didSignedInWithApple: Bool = false
     
+    func signInAnonymous() async throws {
+        try await AuthenticationManager.shared.signInAnonymously()
+    }
+    
     func signInGoogle() async throws {
         let helper = SignInWithGoogleHelper()
         let tokens = try await helper.signIn()
-        try await AuthenticationManager.shared.signInWithGoogle(tokens: tokens)
+        // FIXED: Now safely checks and links if currently anonymous
+        try await AuthenticationManager.shared.linkOrSignInWithGoogle(tokens: tokens)
     }
     
     func signInApple() async throws {
-        // CLEANED UP: Instantiating our isolated Apple Helper
         let helper = SignInWithAppleHelper()
         let tokens = try await helper.signIn()
-        try await AuthenticationManager.shared.signInWithApple(tokens: tokens)
+        try await AuthenticationManager.shared.linkOrSignInWithApple(tokens: tokens)
         
-        // Triggers UI Dismissal
         self.didSignedInWithApple = true
     }
 }
 
 struct AuthenticationView: View {
+    
     @StateObject private var vm = AuthenticationViewModel()
     @Binding var showSignInView: Bool
     
     var body: some View {
         ZStack {
-            // 1. Subtle Background Gradient
+            // 1. Sleek Dark Background
             LinearGradient(
-                colors: [Color.blue.opacity(0.15), Color.purple.opacity(0.15)],
+                colors: [Color(red: 0.1, green: 0.1, blue: 0.12), Color.black],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
             .ignoresSafeArea()
             
-            VStack {
-                // 2. Welcoming Header Section
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Welcome")
-                        .font(.largeTitle)
-                        .fontWeight(.bold)
-                    
-                    Text("Sign in to access your planner and sync your data across devices.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 24)
-                .padding(.top, 40)
+            // Subtle dark mode ambient glow
+            GeometryReader { proxy in
+                Circle()
+                    .fill(Color.blue.opacity(0.15))
+                    .blur(radius: 100)
+                    .frame(width: 300, height: 300)
+                    .offset(x: -50, y: -50)
                 
+                Circle()
+                    .fill(Color.purple.opacity(0.15))
+                    .blur(radius: 100)
+                    .frame(width: 300, height: 300)
+                    .offset(x: proxy.size.width - 150, y: proxy.size.height - 200)
+            }
+            .ignoresSafeArea()
+            
+            VStack {
                 Spacer()
                 
-                // 3. Button Container with Native Glass Effect
+                // 2. Minimalist Header
                 VStack(spacing: 16) {
+                    Image(systemName: "flame.fill")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 75, height: 75)
+                        .foregroundStyle(
+                            LinearGradient(colors: [.orange, .red], startPoint: .top, endPoint: .bottom)
+                        )
+                        .shadow(color: .red.opacity(0.3), radius: 10, x: 0, y: 5)
+                    
+                    Text("Welcome")
+                        .font(.system(size: 38, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                    
+                    Text("Sign in to sync your data and continue your progress.")
+                        .font(.callout)
+                        .fontWeight(.medium)
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(.gray)
+                        .padding(.horizontal, 40)
+                }
+                .padding(.bottom, 50)
+                
+                // 3. Frosted Glass Authentication Card
+                VStack(spacing: 20) {
+                    
+                    // Custom Email Button
                     NavigationLink {
                         SignInEmailView(showSignInView: $showSignInView)
                     } label: {
                         HStack {
                             Image(systemName: "envelope.fill")
+                                .font(.title3)
                             Text("Continue with Email")
                                 .font(.headline)
+                                .fontWeight(.semibold)
                         }
                         .foregroundStyle(.white)
                         .frame(height: 55)
                         .frame(maxWidth: .infinity)
-                        .background(Color.blue)
-                        .cornerRadius(12)
+                        .background(Color.white.opacity(0.1))
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                        )
                     }
                     
-                    GoogleSignInButton(viewModel: GoogleSignInButtonViewModel(scheme: .dark, style: .wide, state: .normal)) {
-                        Task {
-                            do {
-                                try await vm.signInGoogle()
+                    // Subtle Divider
+                    HStack {
+                        VStack { Divider().background(Color.gray.opacity(0.5)) }
+                        Text("or")
+                            .font(.subheadline)
+                            .foregroundStyle(.gray)
+                        VStack { Divider().background(Color.gray.opacity(0.5)) }
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    
+                    // SSO Providers
+                    VStack(spacing: 16) {
+                        GoogleSignInButton(viewModel: GoogleSignInButtonViewModel(scheme: .dark, style: .wide, state: .normal)) {
+                            Task {
+                                do {
+                                    try await vm.signInGoogle()
+                                    showSignInView = false
+                                } catch {
+                                    print("Error linking/signing with Google: \(error)")
+                                }
+                            }
+                        }
+                        .frame(height: 55)
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        
+                        Button {
+                            Task {
+                                do {
+                                    try await vm.signInApple()
+                                } catch {
+                                    print("Error processing Apple Sign In context: \(error)")
+                                }
+                            }
+                        } label: {
+                            // Switched to .whiteOutline for better contrast against dark mode
+                            SignInWithAppleButtonViewRepresentable(type: .continue, style: .whiteOutline)
+                                .allowsHitTesting(false)
+                        }
+                        .frame(height: 55)
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .onChange(of: vm.didSignedInWithApple) { oldValue, newValue in
+                            if newValue == true {
                                 showSignInView = false
-                            } catch {
-                                print("Error: \(error)")
                             }
-                        }
-                    }
-                    
-                    Button {
-                        Task {
-                            do {
-                                try await vm.signInApple()
-                            } catch {
-                                print("Error: \(error)")
-                            }
-                        }
-                    } label: {
-                        SignInWithAppleButtonViewRepresentable(type: .continue, style: .white)
-                            .allowsHitTesting(false)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 55)
-                    }
-                    .frame(height: 55)
-                    .onChange(of: vm.didSignedInWithApple) { oldValue, newValue in
-                        if newValue == true {
-                            showSignInView = false
                         }
                     }
                 }
-                .padding(24)
-                .background(.regularMaterial) // Native Apple glass effect
-                .cornerRadius(24)
-                .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 5)
-                .padding(.horizontal, 16)
-                .padding(.bottom, 40)
+                .padding(30)
+                // Combining a slight black tint with ultraThinMaterial creates a great dark glass effect
+                .background(Color.black.opacity(0.4))
+                .background(.ultraThinMaterial)
+                .environment(\.colorScheme, .dark)
+                .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 32, style: .continuous)
+                        .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                )
+                .padding(.horizontal, 24)
+                
+                Spacer()
+                Spacer()
             }
         }
-        // Hide the default nav bar so our custom title layout takes over smoothly
         .navigationBarHidden(true)
     }
 }

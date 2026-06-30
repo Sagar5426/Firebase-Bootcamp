@@ -11,6 +11,7 @@
 		45DCB7B92FEDBD1B00910676 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 45F129602FED9E8E005E59C8 /* GoogleService-Info.plist */; };
 		45DCB7BB2FEE9E0E00910676 /* SignInWithGoogleHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45DCB7BA2FEE9E0200910676 /* SignInWithGoogleHelper.swift */; };
 		45EBB5AE2FF1BB0E00C1C6F1 /* SignInWithAppleHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45EBB5AD2FF1BB0E00C1C6F1 /* SignInWithAppleHelper.swift */; };
+		45EBB5B02FF2A5B700C1C6F1 /* LinkEmailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45EBB5AF2FF2A5B700C1C6F1 /* LinkEmailView.swift */; };
 		45F129362FE9576D005E59C8 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 45F129352FE9576D005E59C8 /* FirebaseAnalytics */; };
 		45F1293B2FE95A67005E59C8 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 45F1293A2FE95A67005E59C8 /* FirebaseCore */; };
 		45F1293D2FE992C1005E59C8 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 45F1293C2FE992C1005E59C8 /* FirebaseAuth */; };
@@ -31,6 +32,7 @@
 		45DCB7BA2FEE9E0200910676 /* SignInWithGoogleHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInWithGoogleHelper.swift; sourceTree = "<group>"; };
 		45DCB7BF2FF011AD00910676 /* FirebaseBootcamp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = FirebaseBootcamp.entitlements; sourceTree = "<group>"; };
 		45EBB5AD2FF1BB0E00C1C6F1 /* SignInWithAppleHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInWithAppleHelper.swift; sourceTree = "<group>"; };
+		45EBB5AF2FF2A5B700C1C6F1 /* LinkEmailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinkEmailView.swift; sourceTree = "<group>"; };
 		45F129262FE94F78005E59C8 /* FirebaseBootcamp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FirebaseBootcamp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		45F1294E2FEB18FC005E59C8 /* AuthenticationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthenticationManager.swift; sourceTree = "<group>"; };
 		45F1294F2FEB18FC005E59C8 /* AuthenticationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthenticationView.swift; sourceTree = "<group>"; };
@@ -105,6 +107,7 @@
 		45F129522FEB18FC005E59C8 /* Authentication */ = {
 			isa = PBXGroup;
 			children = (
+				45EBB5AF2FF2A5B700C1C6F1 /* LinkEmailView.swift */,
 				45F129502FEB18FC005E59C8 /* RootView.swift */,
 				45F1294E2FEB18FC005E59C8 /* AuthenticationManager.swift */,
 				45F1294F2FEB18FC005E59C8 /* AuthenticationView.swift */,
@@ -218,6 +221,7 @@
 				45F1295B2FEB18FC005E59C8 /* SignInEmailView.swift in Sources */,
 				45F1295C2FEB18FC005E59C8 /* ContentView.swift in Sources */,
 				45DCB7BB2FEE9E0E00910676 /* SignInWithGoogleHelper.swift in Sources */,
+				45EBB5B02FF2A5B700C1C6F1 /* LinkEmailView.swift in Sources */,
 				45DCB7B82FEDAD6C00910676 /* Utilities.swift in Sources */,
 				45EBB5AE2FF1BB0E00C1C6F1 /* SignInWithAppleHelper.swift in Sources */,
 				45F1295D2FEB18FC005E59C8 /* FirebaseBootcampApp.swift in Sources */,

@@ -113,8 +113,95 @@ extension AuthenticationManager {
         return try await signIn(credential: credential)
     }
     
+    // Update your existing signIn(credential:) method
     func signIn(credential: AuthCredential) async throws -> AuthDataResultModel {
-        let authDataResult = try await Auth.auth().signIn(with: credential)
+        if let user = Auth.auth().currentUser, user.isAnonymous {
+            // Automatically link the Apple/Google credential to the background anonymous ID
+            let authDataResult = try await user.link(with: credential)
+            return AuthDataResultModel(user: authDataResult.user)
+        } else {
+            // Standard sign in if no anonymous session exists
+            let authDataResult = try await Auth.auth().signIn(with: credential)
+            return AuthDataResultModel(user: authDataResult.user)
+        }
+    }
+}
+
+// MARK: Anonymous Sign In & Linking
+extension AuthenticationManager {
+    
+    @discardableResult
+    func signInAnonymously() async throws -> AuthDataResultModel {
+        let authDataResult = try await Auth.auth().signInAnonymously()
+        return AuthDataResultModel(user: authDataResult.user)
+    }
+    
+    func isUserAnonymous() -> Bool {
+        return Auth.auth().currentUser?.isAnonymous ?? false
+    }
+    
+    // Core helper method to handle linking credentials vs fresh sign-ins
+    func connectCredential(credential: AuthCredential) async throws -> AuthDataResultModel {
+        if let user = Auth.auth().currentUser, user.isAnonymous {
+            // Link anonymous account with the new credential
+            let authDataResult = try await user.link(with: credential)
+            return AuthDataResultModel(user: authDataResult.user)
+        } else {
+            // Traditional fresh sign-in if no active anonymous session exists
+            return try await signIn(credential: credential)
+        }
+    }
+    
+    // Update existing SSO workflows to route through the linking logic
+    @discardableResult
+    func linkOrSignInWithGoogle(tokens: GoogleSignInResultModel) async throws -> AuthDataResultModel {
+        let credential = GoogleAuthProvider.credential(withIDToken: tokens.idToken, accessToken: tokens.accessToken)
+        return try await connectCredential(credential: credential)
+    }
+    
+    @discardableResult
+    func linkOrSignInWithApple(tokens: SignInWithAppleResult) async throws -> AuthDataResultModel {
+        let credential = OAuthProvider.appleCredential(
+            withIDToken: tokens.token,
+            rawNonce: tokens.nonce,
+            fullName: nil
+        )
+        return try await connectCredential(credential: credential)
+    }
+    
+    @discardableResult
+    func linkWithEmail(email: String, password: String) async throws -> AuthDataResultModel {
+        guard let user = Auth.auth().currentUser else {
+            throw URLError(.badServerResponse)
+        }
+        let credential = EmailAuthProvider.credential(withEmail: email, password: password)
+        let authDataResult = try await user.link(with: credential)
+        return AuthDataResultModel(user: authDataResult.user)
+    }
+}
+
+
+extension AuthenticationManager {
+    
+    // Returns an array of provider IDs (e.g., ["password", "google.com", "apple.com"])
+    func getLinkedProviders() -> [String] {
+        guard let providerData = Auth.auth().currentUser?.providerData else { return [] }
+        return providerData.map { $0.providerID }
+    }
+    
+    @discardableResult
+    func linkGoogle(tokens: GoogleSignInResultModel) async throws -> AuthDataResultModel {
+        guard let user = Auth.auth().currentUser else { throw URLError(.badServerResponse) }
+        let credential = GoogleAuthProvider.credential(withIDToken: tokens.idToken, accessToken: tokens.accessToken)
+        let authDataResult = try await user.link(with: credential)
+        return AuthDataResultModel(user: authDataResult.user)
+    }
+    
+    @discardableResult
+    func linkApple(tokens: SignInWithAppleResult) async throws -> AuthDataResultModel {
+        guard let user = Auth.auth().currentUser else { throw URLError(.badServerResponse) }
+        let credential = OAuthProvider.appleCredential(withIDToken: tokens.token, rawNonce: tokens.nonce, fullName: nil)
+        let authDataResult = try await user.link(with: credential)
         return AuthDataResultModel(user: authDataResult.user)
     }
 }

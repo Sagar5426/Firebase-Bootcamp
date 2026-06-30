@@ -58,6 +58,15 @@ final class AuthenticationManager {
     func signOut() throws {
         try Auth.auth().signOut()
     }
+    
+    func deleteUser() async throws {
+            guard let user = Auth.auth().currentUser else {
+                print("No active user found to delete.")
+                return
+            }
+            
+            try await user.delete()
+        }
 }
 
 // MARK: Sign in Email
@@ -104,7 +113,6 @@ extension AuthenticationManager {
     
     @discardableResult
     func signInWithApple(tokens: SignInWithAppleResult) async throws -> AuthDataResultModel {
-        // FIXED: Using Apple-specific factory credential API mapping
         let credential = OAuthProvider.appleCredential(
             withIDToken: tokens.token,
             rawNonce: tokens.nonce,
@@ -113,17 +121,9 @@ extension AuthenticationManager {
         return try await signIn(credential: credential)
     }
     
-    // Update your existing signIn(credential:) method
     func signIn(credential: AuthCredential) async throws -> AuthDataResultModel {
-        if let user = Auth.auth().currentUser, user.isAnonymous {
-            // Automatically link the Apple/Google credential to the background anonymous ID
-            let authDataResult = try await user.link(with: credential)
-            return AuthDataResultModel(user: authDataResult.user)
-        } else {
-            // Standard sign in if no anonymous session exists
-            let authDataResult = try await Auth.auth().signIn(with: credential)
-            return AuthDataResultModel(user: authDataResult.user)
-        }
+        let authDataResult = try await Auth.auth().signIn(with: credential)
+        return AuthDataResultModel(user: authDataResult.user)
     }
 }
 
@@ -140,17 +140,40 @@ extension AuthenticationManager {
         return Auth.auth().currentUser?.isAnonymous ?? false
     }
     
-    // Core helper method to handle linking credentials vs fresh sign-ins
-    func connectCredential(credential: AuthCredential) async throws -> AuthDataResultModel {
-        if let user = Auth.auth().currentUser, user.isAnonymous {
-            // Link anonymous account with the new credential
-            let authDataResult = try await user.link(with: credential)
-            return AuthDataResultModel(user: authDataResult.user)
-        } else {
-            // Traditional fresh sign-in if no active anonymous session exists
-            return try await signIn(credential: credential)
+    // 2. LINK OR SIGN IN
+        func connectCredential(credential: AuthCredential) async throws -> AuthDataResultModel {
+            if let user = Auth.auth().currentUser, user.isAnonymous {
+                do {
+                    // Attempt to link anonymous data to the new credential
+                    let authDataResult = try await user.link(with: credential)
+                    return AuthDataResultModel(user: authDataResult.user)
+                } catch let error as NSError {
+                    
+                    if error.domain == AuthErrorDomain, let errorCode = AuthErrorCode(rawValue: error.code) {
+                        if errorCode == .credentialAlreadyInUse {
+                            
+                            // FIREBASE MAGIC: Extract the updated, un-burned credential from the error
+                            if let updatedCredential = error.userInfo[AuthErrorUserInfoUpdatedCredentialKey] as? AuthCredential {
+                                
+                                // Safely sign in using the updated credential Firebase provided
+                                let authDataResult = try await Auth.auth().signIn(with: updatedCredential)
+                                return AuthDataResultModel(user: authDataResult.user)
+                                
+                            } else {
+                                // Fallback for Google (whose tokens usually survive)
+                                let authDataResult = try await Auth.auth().signIn(with: credential)
+                                return AuthDataResultModel(user: authDataResult.user)
+                            }
+                        }
+                    }
+                    throw error
+                }
+            } else {
+                // Standard sign in if not anonymous
+                return try await signIn(credential: credential)
+            }
         }
-    }
+    
     
     // Update existing SSO workflows to route through the linking logic
     @discardableResult

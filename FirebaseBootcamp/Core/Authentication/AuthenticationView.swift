@@ -38,14 +38,15 @@ final class AuthenticationViewModel: ObservableObject {
     func signInGoogle() async throws {
         let helper = SignInWithGoogleHelper()
         let tokens = try await helper.signIn()
-        // FIXED: Now safely checks and links if currently anonymous
-        try await AuthenticationManager.shared.linkOrSignInWithGoogle(tokens: tokens)
+        let authDataResult = try await AuthenticationManager.shared.linkOrSignInWithGoogle(tokens: tokens)
+        try await UserManager.shared.createNewUser(auth: authDataResult)
     }
     
     func signInApple() async throws {
         let helper = SignInWithAppleHelper()
         let tokens = try await helper.signIn()
-        try await AuthenticationManager.shared.linkOrSignInWithApple(tokens: tokens)
+        let authDataResult = try await AuthenticationManager.shared.linkOrSignInWithApple(tokens: tokens)
+        try await UserManager.shared.createNewUser(auth: authDataResult)
         
         self.didSignedInWithApple = true
     }

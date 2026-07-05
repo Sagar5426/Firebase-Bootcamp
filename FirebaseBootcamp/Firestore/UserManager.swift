@@ -19,7 +19,16 @@ final class UserManager {
     static let shared = UserManager()
     private init() {}
     
+    func checkUserExists(userId: String) async throws -> Bool {
+        let snapshot = try await Firestore.firestore().collection("users").document(userId).getDocument()
+        return snapshot.exists
+    }
+    
     func createNewUser(auth: AuthDataResultModel) async throws {
+        // Prevent overwriting if the user already exists
+        let userExists = try await checkUserExists(userId: auth.uid)
+        guard !userExists else { return }
+        
         var userData: [String:Any] = [
             "user_id" : auth.uid,
             "date_created" : Timestamp(),
@@ -44,7 +53,9 @@ final class UserManager {
         
         let email = data["email"] as? String
         let photoUrl = data["photo_url"] as? String
-        let date_created = ["date_created"] as? Date
+        // extract the Timestamp and convert to Date
+        let timestamp = data["date_created"] as? Timestamp
+        let date_created = timestamp?.dateValue()
         
         return DbUser(userId: userId, email: email, photoUrl: photoUrl, date_created: date_created)
     }

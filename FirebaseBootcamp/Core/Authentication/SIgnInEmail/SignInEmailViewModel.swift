@@ -19,7 +19,8 @@ final class SignInEmailViewModel : ObservableObject {
         
         // Context Assessment: Check if linking is required
         if AuthenticationManager.shared.isUserAnonymous() {
-            try await AuthenticationManager.shared.linkWithEmail(email: email, password: password)
+            let authDataResult = try await AuthenticationManager.shared.linkWithEmail(email: email, password: password)
+            try await UserManager.shared.createNewUser(auth: authDataResult)
         } else {
             let authDataResult = try await AuthenticationManager.shared.createUser(email: email, password: password)
             try await UserManager.shared.createNewUser(auth: authDataResult)

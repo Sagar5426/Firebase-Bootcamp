@@ -12,20 +12,6 @@ import GoogleSignInSwift
 import FirebaseAuth
 import AuthenticationServices
 
-struct SignInWithAppleButtonViewRepresentable: UIViewRepresentable {
-    
-    let type: ASAuthorizationAppleIDButton.ButtonType
-    let style: ASAuthorizationAppleIDButton.Style
-    
-    func makeUIView(context: Context) -> ASAuthorizationAppleIDButton {
-        ASAuthorizationAppleIDButton(type: type, style: style)
-    }
-    
-    func updateUIView(_ uiView: ASAuthorizationAppleIDButton, context: Context) {}
-}
-
-
-
 @MainActor
 final class AuthenticationViewModel: ObservableObject {
     
@@ -39,14 +25,16 @@ final class AuthenticationViewModel: ObservableObject {
         let helper = SignInWithGoogleHelper()
         let tokens = try await helper.signIn()
         let authDataResult = try await AuthenticationManager.shared.linkOrSignInWithGoogle(tokens: tokens)
-        try await UserManager.shared.createNewUser(auth: authDataResult)
+        let user = DbUser(auth: authDataResult)
+        try await UserManager.shared.createNewUser(user: user)
     }
     
     func signInApple() async throws {
         let helper = SignInWithAppleHelper()
         let tokens = try await helper.signIn()
         let authDataResult = try await AuthenticationManager.shared.linkOrSignInWithApple(tokens: tokens)
-        try await UserManager.shared.createNewUser(auth: authDataResult)
+        let user = DbUser(auth: authDataResult)
+        try await UserManager.shared.createNewUser(user: user)
         
         self.didSignedInWithApple = true
     }

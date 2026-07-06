@@ -16,6 +16,17 @@ final class ProfileViewModel: ObservableObject {
         let authDataResult = try AuthenticationManager.shared.getAuthenticatedUser()
         self.user = try await UserManager.shared.getUser(userId: authDataResult.uid)
     }
+    
+    func togglePremiumStatus() {
+        guard let user  = user else {return}
+        let currentPremiumStatus = user.isPremium ?? false
+        
+        Task {
+            try await UserManager.shared.updateUserPremiumStatus(userId: user.userId, isPremium: !currentPremiumStatus)
+            self.user = try await UserManager.shared.getUser(userId: user.userId)
+        }
+        
+    }
 }
 
 struct ProfileView: View {
@@ -33,6 +44,13 @@ struct ProfileView: View {
                 if let date = user.date_created {
                     Text("Date Created: \(date)")
                 }
+                
+                Button {
+                    vm.togglePremiumStatus()
+                } label: {
+                    Text("User is premium: \((user.isPremium ?? false).description.capitalized)")
+                }
+                
             }
             
         }

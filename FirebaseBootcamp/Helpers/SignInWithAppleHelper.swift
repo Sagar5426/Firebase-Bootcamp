@@ -9,6 +9,7 @@
 import Foundation
 import AuthenticationServices
 import CryptoKit
+import SwiftUI
 
 struct SignInWithAppleResult {
     let token: String
@@ -17,6 +18,17 @@ struct SignInWithAppleResult {
     let email: String?
 }
 
+struct SignInWithAppleButtonViewRepresentable: UIViewRepresentable {
+    
+    let type: ASAuthorizationAppleIDButton.ButtonType
+    let style: ASAuthorizationAppleIDButton.Style
+    
+    func makeUIView(context: Context) -> ASAuthorizationAppleIDButton {
+        ASAuthorizationAppleIDButton(type: type, style: style)
+    }
+    
+    func updateUIView(_ uiView: ASAuthorizationAppleIDButton, context: Context) {}
+}
 
 @MainActor
 final class SignInWithAppleHelper: NSObject {

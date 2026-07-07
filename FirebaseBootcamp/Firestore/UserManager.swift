@@ -63,7 +63,7 @@ struct DbUser: Codable {
         self.date_created = try container.decodeIfPresent(Date.self, forKey: .date_created)
         self.isPremium = try container.decodeIfPresent(Bool.self, forKey: .isPremium)
         self.preferences = try container.decodeIfPresent([String].self, forKey: .preferences)
-        self.favouriteMovie = try container.decodeIfPresent(Movie.self, forKey: .preferences)
+        self.favouriteMovie = try container.decodeIfPresent(Movie.self, forKey: .favouriteMovie)
     }
     
     func encode(to encoder: any Encoder) throws {
@@ -152,12 +152,20 @@ final class UserManager {
         try await userDocument(userId: userId).updateData(dict)
     }
     
-    func removeFavMovie(userId: String, movie: Movie) async throws {
-        let data: [String:Any?] = [
-            DbUser.CodingKeys.favouriteMovie.rawValue : movie
-        ]
-        
-        try await userDocument(userId: userId).updateData(data as [AnyHashable : Any])
-    }
+//    func removeFavMovie(userId: String, movie: Movie) async throws {
+//        let data: [String:Any?] = [
+//            DbUser.CodingKeys.favouriteMovie.rawValue : movie
+//        ]
+//        
+//        try await userDocument(userId: userId).updateData(data as [AnyHashable : Any])
+//    }
+    
+        func removeFavMovie(userId: String) async throws {
+            let data: [String:Any] = [
+                DbUser.CodingKeys.favouriteMovie.rawValue : FieldValue.delete()
+            ]
+            
+            try await userDocument(userId: userId).updateData(data)
+        }
     
 }

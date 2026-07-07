@@ -17,8 +17,6 @@ final class ProfileViewModel: ObservableObject {
         self.user = try await UserManager.shared.getUser(userId: authDataResult.uid)
     }
     
-    
-    
     func togglePremiumStatus() {
         guard let user  = user else {return}
         let currentPremiumStatus = user.isPremium ?? false
@@ -48,17 +46,31 @@ final class ProfileViewModel: ObservableObject {
     }
     
     func addFavouriteMovie() {
-        guard let user  = user else {return}
-        let movie = Movie(id: "1", name: "Doomsday", isPopular: true)
-        Task {
-            try await UserManager.shared.addFavMovie(userId: user.userId, movie: movie)
-            self.user = try await UserManager.shared.getUser(userId: user.userId)
+            guard let user  = user else {return}
+            let movie = Movie(id: "1", name: "Doomsday", isPopular: true)
+            Task {
+                do {
+                    try await UserManager.shared.addFavMovie(userId: user.userId, movie: movie)
+                    self.user = try await UserManager.shared.getUser(userId: user.userId)
+                } catch {
+                    print("Error adding favorite movie: \(error)")
+                }
+            }
         }
-    }
     
     func removeFavoriteMovie() {
-        
-    }
+            guard let user = user else { return }
+            
+            Task {
+                do {
+                    try await UserManager.shared.removeFavMovie(userId: user.userId)
+                    self.user = try await UserManager.shared.getUser(userId: user.userId)
+                    
+                } catch {
+                    print("Error removing favorite movie: \(error.localizedDescription)")
+                }
+            }
+        }
     
 }
 

@@ -29,9 +29,9 @@ struct ProductCellView: View {
                     .font(.headline)
                     .foregroundStyle(.primary)
                 Text("Price: $" + String(product.price ?? 0))
-                Text("Rating" + String(product.rating ?? 0))
-                Text("Category" + String(product.category ?? "n/a"))
-                Text("Brand" + String(product.brand ?? "n/a"))
+                Text("Rating: " + String(product.rating ?? 0))
+                Text("Category: " + String(product.category ?? "n/a"))
+                Text("Brand: " + String(product.brand ?? "n/a"))
                 
             }
             .font(.callout)

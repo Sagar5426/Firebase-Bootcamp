@@ -84,68 +84,68 @@ struct ProfileView: View {
     }
     
     var body: some View {
-        List {
-            if let user = vm.user {
-                Text("User id: \(user.userId)")
-                
-                if let email = user.email {
-                    Text("Email: \(email)")
-                }
-                if let date = user.date_created {
-                    Text("Date Created: \(date)")
-                }
-                
-                Button {
-                    vm.togglePremiumStatus()
-                } label: {
-                    Text("User is premium: \((user.isPremium ?? false).description.capitalized)")
-                }
-                
-                VStack {
-                    HStack {
-                        ForEach(preferencesOption, id: \.self) { string in
-                            Button(string) {
-                                if preferenceIsSelected(text: string) {
-                                    vm.removeUserPreference(text: string)
-                                } else {
-                                    vm.addUserPreference(text: string)
-                                }
-                            }
-                            .font(.headline)
-                            .buttonStyle(.borderedProminent)
-                            .tint(preferenceIsSelected(text: string) ? .green: .red)
-                        }
+            List {
+                if let user = vm.user {
+                    Text("User id: \(user.userId)")
+                    
+                    if let email = user.email {
+                        Text("Email: \(email)")
+                    }
+                    if let date = user.date_created {
+                        Text("Date Created: \(date)")
                     }
                     
-                    Text("User preferences: \((user.preferences ?? []).joined(separator: ", "))")
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                Button {
-                    if user.favouriteMovie == nil {
-                        vm.addFavouriteMovie()
-                    } else {
-                        vm.removeFavoriteMovie()
+                    Button {
+                        vm.togglePremiumStatus()
+                    } label: {
+                        Text("User is premium: \((user.isPremium ?? false).description.capitalized)")
                     }
-                } label: {
-                    Text("Favorite Movie: \(user.favouriteMovie?.name ?? "" )")
+                    
+                    VStack {
+                        HStack {
+                            ForEach(preferencesOption, id: \.self) { string in
+                                Button(string) {
+                                    if preferenceIsSelected(text: string) {
+                                        vm.removeUserPreference(text: string)
+                                    } else {
+                                        vm.addUserPreference(text: string)
+                                    }
+                                }
+                                .font(.headline)
+                                .buttonStyle(.borderedProminent)
+                                .tint(preferenceIsSelected(text: string) ? .green: .red)
+                            }
+                        }
+                        
+                        Text("User preferences: \((user.preferences ?? []).joined(separator: ", "))")
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    Button {
+                        if user.favouriteMovie == nil {
+                            vm.addFavouriteMovie()
+                        } else {
+                            vm.removeFavoriteMovie()
+                        }
+                    } label: {
+                        Text("Favorite Movie: \(user.favouriteMovie?.name ?? "" )")
+                    }
+                }
+                
+            }
+            .task {
+                try? await vm.loadCurrentUser()
+            }
+            .navigationTitle("Profile")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink  {
+                        SettingsView(showSignInView: $showSignInView)
+                    } label: {
+                        Image(systemName: "gear")
+                            .font(.headline)
+                    }
                 }
             }
-            
-        }
-        .task {
-            try? await vm.loadCurrentUser()
-        }
-        .navigationTitle("Profile")
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                NavigationLink  {
-                    SettingsView(showSignInView: $showSignInView)
-                } label: {
-                    Image(systemName: "gear")
-                        .font(.headline)
-                }
-            }
-        }
     }
 }
 
